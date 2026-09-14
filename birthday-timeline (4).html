@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ย้อนวันวาน — เว็บวันเกิด</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chonburi&family=Mitr:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     โทนสี / TOKENS — แก้สีธีมทั้งเว็บได้ที่นี่ที่เดียว
+     ============================================================ */
+  :root{
+    --cream:      #FBF1E2;   /* พื้นหลังหลัก อบอุ่นแบบกระดาษเก่า */
+    --paper:      #FFFDF8;   /* พื้นการ์ด/โพลารอยด์ */
+    --ink:        #4A3826;   /* สีตัวหนังสือหลัก น้ำตาลเข้มอุ่น */
+    --ink-soft:   #7A6A56;   /* ตัวหนังสือรอง */
+    --honey:      #E3A857;   /* สีเน้นหลัก ส้มผึ้งอุ่นๆ ไม่หวานแหลม */
+    --sage:       #7C9473;   /* สีเขียวเสจ ช่วยลดความหวาน */
+    --rose:       #D98B8B;   /* กุหลาบฝุ่น ใช้แต้มจุดเล็กๆ */
+    --line:       #D8C7A8;   /* เส้นไทม์ไลน์/เส้นขอบ */
+    --shadow:     rgba(74,56,38,0.14);
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Mitr', sans-serif;
+    font-weight:300;
+    line-height:1.75;
+    overflow-x:hidden;
+  }
+  h1,h2,h3, .display{
+    font-family:'Chonburi', cursive;
+    font-weight:400;
+    color:var(--ink);
+    line-height:1.35;
+  }
+  ::selection{ background:var(--honey); color:var(--paper); }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important; }
+  }
+  a:focus-visible, button:focus-visible{
+    outline:3px solid var(--sage);
+    outline-offset:3px;
+  }
+
+  /* ---------- พื้นผิวกระดาษละเอียดๆ ให้ความรู้สึกอบอุ่น ---------- */
+  .grain{
+    position:fixed; inset:0; pointer-events:none; z-index:1; opacity:0.05; mix-blend-mode:multiply;
+    background-image:radial-gradient(var(--ink) 0.6px, transparent 0.6px);
+    background-size:4px 4px;
+  }
+
+  /* ============================================================
+     ปุ่มเพลงลอย
+     ============================================================ */
+  .music-btn{
+    position:fixed; top:20px; right:20px; z-index:50;
+    width:56px; height:56px; border-radius:50%;
+    background:var(--paper); border:2px solid var(--honey);
+    box-shadow:0 6px 16px var(--shadow);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .25s ease;
+  }
+  .music-btn:hover{ transform:scale(1.08); }
+  .music-btn svg{ width:22px; height:22px; fill:var(--honey); }
+  .music-btn .bar{ animation:bounce 1s ease-in-out infinite; transform-origin:bottom; }
+  .music-btn.playing .bar:nth-child(1){ animation-delay:0s; }
+  .music-btn.playing .bar:nth-child(2){ animation-delay:.15s; }
+  .music-btn.playing .bar:nth-child(3){ animation-delay:.3s; }
+  .music-btn:not(.playing) .bar{ animation-play-state:paused; }
+  @keyframes bounce{ 0%,100%{ transform:scaleY(0.4);} 50%{ transform:scaleY(1);} }
+  .music-hint{
+    position:fixed; top:82px; right:20px; z-index:50;
+    background:var(--ink); color:var(--paper); font-size:12px; padding:6px 10px;
+    border-radius:8px; opacity:0; transition:opacity .3s ease; pointer-events:none;
+  }
+  .music-hint.show{ opacity:0.92; }
+
+  /* ============================================================
+     HERO
+     ============================================================ */
+  .hero{
+    position:relative; min-height:100svh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:40px 24px;
+    overflow:hidden;
+  }
+  .hero .glow{
+    position:absolute; width:640px; height:640px; border-radius:50%;
+    background:radial-gradient(circle, rgba(227,168,87,0.35), transparent 70%);
+    top:-160px; left:50%; transform:translateX(-50%); z-index:0;
+  }
+  .candle{ position:relative; z-index:2; width:64px; height:110px; margin-bottom:22px; }
+  .flame{
+    width:16px; height:24px; background:linear-gradient(180deg,#FFE29A, var(--honey) 70%);
+    border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+    position:absolute; left:50%; top:0; transform:translateX(-50%);
+    animation:flicker 2.4s ease-in-out infinite;
+    box-shadow:0 0 16px 4px rgba(227,168,87,0.55);
+  }
+  @keyframes flicker{
+    0%,100%{ transform:translateX(-50%) rotate(-2deg) scale(1); }
+    45%{ transform:translateX(-50%) rotate(2deg) scale(1.06); }
+    70%{ transform:translateX(-50%) rotate(-1deg) scale(0.96); }
+  }
+  .wax{
+    position:absolute; top:22px; left:50%; transform:translateX(-50%);
+    width:26px; height:82px; background:var(--rose); border-radius:4px;
+  }
+  .wax::before{ content:""; position:absolute; top:-6px; left:6px; width:3px; height:10px; background:var(--ink-soft); }
+
+  .eyebrow-hero{ position:relative; z-index:2; color:var(--sage); font-size:15px; letter-spacing:0.02em; margin:0 0 6px; }
+  .hero h1{ position:relative; z-index:2; font-size:clamp(2.4rem, 7vw, 4.6rem); margin:0; }
+  .hero .subtitle{ position:relative; z-index:2; max-width:520px; color:var(--ink-soft); font-size:17px; margin-top:16px; }
+
+  .scroll-cue{
+    position:relative; z-index:2; margin-top:56px; display:flex; flex-direction:column; align-items:center;
+    gap:6px; color:var(--ink-soft); font-size:13px;
+  }
+  .scroll-cue .stick{ width:1px; height:34px; background:var(--line); position:relative; overflow:hidden; }
+  .scroll-cue .stick::after{
+    content:""; position:absolute; top:-100%; left:0; width:100%; height:100%; background:var(--honey);
+    animation:travel 1.8s ease-in-out infinite;
+  }
+  @keyframes travel{ 0%{ top:-100%; } 100%{ top:100%; } }
+
+  /* ============================================================
+     TIMELINE
+     ============================================================ */
+  .timeline-wrap{ position:relative; max-width:1040px; margin:0 auto; padding:40px 20px 40px; }
+  .timeline-head{ text-align:center; max-width:560px; margin:0 auto 70px; }
+  .timeline-head .eyebrow{ color:var(--sage); font-size:14px; margin-bottom:8px; }
+  .timeline-head h2{ font-size:clamp(1.7rem, 4vw, 2.4rem); margin:0 0 12px; }
+  .timeline-head p{ color:var(--ink-soft); font-size:15.5px; margin:0; }
+
+  .spine{
+    position:absolute; left:50%; top:180px; bottom:120px; width:2px;
+    background:repeating-linear-gradient(var(--line), var(--line) 8px, transparent 8px, transparent 16px);
+    transform:translateX(-50%); z-index:0;
+  }
+
+  .entry{
+    position:relative; display:grid; grid-template-columns:1fr 60px 1fr; align-items:start;
+    margin-bottom:64px; opacity:0; transform:translateY(24px) scale(0.98); filter:blur(3px);
+    transition:opacity .7s ease, transform .7s ease, filter .7s ease;
+  }
+  .entry.in-view{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); }
+
+  .entry .node{
+    grid-column:2; display:flex; justify-content:center; align-items:flex-start; padding-top:6px; z-index:2;
+  }
+  .entry .node .dot{
+    width:14px; height:14px; border-radius:50%; background:var(--paper); border:3px solid var(--honey);
+  }
+  .entry .card{ background:transparent; }
+  .entry.left .card{ grid-column:1; text-align:right; padding-right:36px; }
+  .entry.right .card{ grid-column:3; text-align:left; padding-left:36px; }
+  .entry.right .node{ grid-column:2; }
+
+  .tag{
+    display:inline-block; font-family:'Chonburi', cursive; font-size:14px; color:var(--paper);
+    background:var(--sage); padding:4px 14px; border-radius:20px; margin-bottom:10px;
+  }
+  .entry h3{ font-size:1.35rem; margin:0 0 8px; }
+  .entry .story{ color:var(--ink-soft); font-size:15px; max-width:340px; }
+  .entry.left .story{ margin-left:auto; }
+
+  /* กรอบโพลารอยด์ */
+  .polaroid{
+    display:inline-block; background:var(--paper); padding:10px 10px 34px; margin-top:16px;
+    box-shadow:0 10px 24px var(--shadow); border-radius:2px; max-width:300px;
+    transition:transform .3s ease;
+  }
+  .entry.left .polaroid{ transform:rotate(-2.4deg); }
+  .entry.right .polaroid{ transform:rotate(2.4deg); }
+  .polaroid:hover{ transform:rotate(0deg) scale(1.02); }
+  .polaroid .media{
+    width:100%; aspect-ratio:4/5; overflow:hidden; border-radius:1px; background:#f1e6d2;
+    display:flex; align-items:center; justify-content:center; position:relative;
+  }
+  .polaroid .media img, .polaroid .media video{ width:100%; height:100%; object-fit:cover; display:block; }
+  .polaroid .placeholder{
+    display:flex; flex-direction:column; align-items:center; gap:8px; color:#B79E71; padding:14px; text-align:center;
+  }
+  .polaroid .placeholder svg{ width:34px; height:34px; opacity:0.7; }
+  .polaroid .placeholder span{ font-size:11.5px; }
+  .polaroid .caption{ display:block; text-align:center; font-size:12.5px; color:var(--ink-soft); margin-top:10px; }
+
+  @media (max-width:760px){
+    .spine{ left:22px; }
+    .entry{ grid-template-columns:44px 1fr; }
+    .entry .node{ grid-column:1; }
+    .entry.left .card, .entry.right .card{
+      grid-column:2; text-align:left; padding-left:14px; padding-right:0;
+    }
+    .entry.left .story, .entry.right .story{ margin-left:0; max-width:none; }
+    .entry.left .polaroid, .entry.right .polaroid{ transform:rotate(-1.4deg); }
+  }
+
+  /* ============================================================
+     CLOSING / เป่าเทียน
+     ============================================================ */
+  .closing{
+    position:relative; text-align:center; padding:90px 24px 120px; max-width:600px; margin:0 auto;
+  }
+  .closing .eyebrow{ color:var(--sage); font-size:14px; margin-bottom:10px; }
+  .closing h2{ font-size:clamp(1.7rem, 4vw, 2.3rem); margin:0 0 18px; }
+  .closing p{ color:var(--ink-soft); font-size:15.5px; margin:0 0 34px; }
+
+  .cake{ width:150px; margin:0 auto 30px; cursor:pointer; user-select:none; }
+  .cake svg{ width:100%; display:block; }
+  .cake .flame2{ transform-origin:bottom center; animation:flicker 2.2s ease-in-out infinite; }
+  .cake.blown .flame2{ animation:none; opacity:0; transition:opacity .4s ease; }
+  .cake-note{ font-size:13px; color:var(--ink-soft); margin-top:-16px; margin-bottom:30px; }
+
+  .wish-reveal{
+    max-width:420px; margin:0 auto; background:var(--paper); border-radius:10px; padding:26px 28px;
+    box-shadow:0 10px 26px var(--shadow); opacity:0; transform:translateY(14px); transition:all .6s ease;
+    font-family:'Chonburi', cursive; font-size:1.05rem; color:var(--ink);
+  }
+  .wish-reveal.show{ opacity:1; transform:translateY(0); }
+
+  footer{ text-align:center; padding:30px 20px 50px; color:var(--ink-soft); font-size:12.5px; }
+  footer a{ color:var(--sage); }
+
+  /* คอนเฟตติ */
+  .confetti-piece{
+    position:fixed; top:-10px; z-index:80; border-radius:2px; pointer-events:none;
+    animation:fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform:translateY(110vh) rotate(540deg); opacity:0.9; }
+  }
+
+  /* ============================================================
+     ด่านคำถามกวนๆ (QUIZ GATE) — หน้าแรกสุดที่เห็นก่อนเข้าเว็บจริง
+     แก้ข้อความ/คำถามได้ที่ CONFIG.gate ในสคริปต์ด้านล่าง ไม่ต้องแก้ CSS ส่วนนี้
+     ============================================================ */
+  .gate-overlay{
+    position:fixed; inset:0; z-index:200; background:var(--cream);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    transition:opacity .6s ease, visibility .6s ease;
+  }
+  .gate-overlay.gate-hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .gate-card{
+    position:relative; max-width:440px; width:100%; background:var(--paper);
+    border-radius:18px; padding:44px 32px; box-shadow:0 16px 40px var(--shadow);
+    text-align:center; transition:opacity .3s ease, transform .3s ease;
+  }
+  .gate-card.gate-fade{ opacity:0; transform:translateY(8px); }
+  .gate-eyebrow{ color:var(--sage); font-size:14px; margin:0 0 8px; }
+  .gate-card h2{ font-size:clamp(1.35rem,5.5vw,1.85rem); margin:0 0 14px; }
+  .gate-body{ color:var(--ink-soft); font-size:15px; margin:0 0 26px; }
+  .gate-btn{
+    display:inline-block; border:none; cursor:pointer; font-family:'Mitr',sans-serif; font-weight:500;
+    background:var(--honey); color:var(--paper); padding:13px 28px; border-radius:30px; font-size:15px;
+    transition:transform .2s ease, box-shadow .2s ease; box-shadow:0 8px 18px rgba(227,168,87,0.35);
+  }
+  .gate-btn:hover{ transform:translateY(-2px) scale(1.02); }
+  .gate-options{ display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+  .gate-option{
+    border:2px solid var(--line); background:var(--paper); color:var(--ink); padding:12px 16px; border-radius:12px;
+    font-family:'Mitr',sans-serif; font-size:14.5px; cursor:pointer; text-align:left;
+    transition:border-color .2s ease, transform .15s ease, background .2s ease;
+  }
+  .gate-option:hover{ border-color:var(--honey); transform:translateX(2px); }
+  .gate-option.picked{ border-color:var(--sage); background:rgba(124,148,115,0.12); }
+  .gate-reply{
+    font-size:13.5px; color:var(--sage); min-height:18px; margin:0 0 4px; opacity:0; transition:opacity .3s ease;
+  }
+  .gate-reply.show{ opacity:1; }
+  .gate-progress{ display:flex; justify-content:center; gap:6px; margin-bottom:22px; }
+  .gate-progress span{ width:7px; height:7px; border-radius:50%; background:var(--line); transition:background .3s ease; }
+  .gate-progress span.active{ background:var(--honey); }
+
+  /* ---------- หน้า "ดูผลทำนาย" ปุ่มหนีเวลากด ---------- */
+  .gate-eval-stage{ position:relative; height:180px; margin:4px 0 8px; }
+  .gate-eval-btn{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    transition:left .38s cubic-bezier(.34,1.56,.64,1), top .38s cubic-bezier(.34,1.56,.64,1);
+    white-space:nowrap;
+  }
+  .gate-eval-btn.shake{ animation:gateShake .32s ease; }
+  @keyframes gateShake{
+    0%,100%{ transform:translate(-50%,-50%) rotate(0deg); }
+    25%{ transform:translate(-50%,-50%) rotate(-7deg); }
+    75%{ transform:translate(-50%,-50%) rotate(7deg); }
+  }
+  .gate-eval-msg{
+    font-size:13.5px; color:var(--rose); min-height:20px; margin:0; opacity:0; transition:opacity .3s ease;
+  }
+  .gate-eval-msg.show{ opacity:1; }
+  .gate-eval-msg.catch{ color:var(--sage); font-family:'Chonburi', cursive; font-size:15px; }
+
+  /* ---------- หน้า "กำลังประมวลผล" (หลอกๆ) ---------- */
+  .gate-spinner{
+    width:38px; height:38px; margin:0 auto 18px; border:4px solid var(--line);
+    border-top-color:var(--honey); border-radius:50%; animation:gateSpin .8s linear infinite;
+  }
+  @keyframes gateSpin{ to{ transform:rotate(360deg); } }
+  .gate-processing-sub{ font-size:13px; color:var(--ink-soft); margin:-14px 0 0; }
+</style>
+</head>
+<body>
+<!-- ============================================================
+     ด่านคำถามกวนๆ — สิ่งแรกที่คนเปิดลิงก์จะเห็น อำพรางไม่ให้รู้ว่า
+     เป็นเซอร์ไพรส์วันเกิด จนกว่าจะถึงหน้าเฉลย
+     แก้ข้อความ/คำถามทั้งหมดได้ที่ CONFIG.gate ท้ายไฟล์ ไม่ต้องแตะส่วนนี้
+     ============================================================ -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card" id="gateCard"></div>
+</div>
+
+<div class="grain"></div>
+
+<!-- ปุ่มเปิด/ปิดเพลง -->
+<button class="music-btn" id="musicBtn" aria-label="เปิดหรือปิดเพลง">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path class="bar" d="M4 10h3v4H4z"/><path class="bar" d="M10 6h3v12h-3z"/><path class="bar" d="M16 12h3v2h-3z"/></svg>
+</button>
+<div class="music-hint" id="musicHint">แตะเพื่อเปิดเพลงประกอบ 🎵</div>
+
+<!-- เสียงเพลง: เปลี่ยน src ตรงนี้เป็นไฟล์เพลงของคุณ เช่น "music/birthday-song.mp3" -->
+<audio id="bgm" loop preload="none">
+  <source src="music.mp3" type="audio/mpeg">
+</audio>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="glow"></div>
+  <div class="candle">
+    <div class="wax"></div>
+    <div class="flame"></div>
+  </div>
+  <p class="eyebrow-hero" id="heroEyebrow">สุขสันต์วันเกิด</p>
+  <h1 id="heroName">ชื่อเพื่อนเรา</h1>
+  <p class="subtitle" id="heroSubtitle">ก่อนจะเป่าเทียนวันนี้ ขอชวนย้อนกลับไปดูเรื่องราวที่เราผ่านมาด้วยกันอีกสักครั้ง</p>
+  <div class="scroll-cue"><span>เลื่อนลงเพื่อย้อนความหลัง</span><div class="stick"></div></div>
+</section>
+
+<!-- ============ TIMELINE ============ -->
+<section class="timeline-wrap">
+  <div class="timeline-head">
+    <p class="eyebrow">เส้นทางความทรงจำ</p>
+    <h2>ทุกปีที่ผ่านมา ล้วนมีเรื่องเล่า</h2>
+    <p>แต่ละจุดคือช่วงเวลาหนึ่งที่เราอยากเก็บไว้ — ลองกดดูรูปและคลิปแต่ละจุดได้เลย</p>
+  </div>
+  <div class="spine"></div>
+  <div id="timelineList"></div>
+</section>
+
+<!-- ============ CLOSING ============ -->
+<section class="closing">
+  <p class="eyebrow">ก่อนเป่าเทียน</p>
+  <h2 id="closingTitle">ขอให้ทุกวันของเธอมีความสุข</h2>
+  <p id="closingText">ไม่ว่าปีนี้จะพาอะไรเข้ามา ขอให้มีคนที่รักอยู่ข้างๆ เหมือนวันนี้เสมอ</p>
+
+  <div class="cake" id="cake" role="button" tabindex="0" aria-label="กดเพื่อเป่าเทียน">
+    <svg viewBox="0 0 120 120">
+      <ellipse cx="60" cy="100" rx="40" ry="8" fill="#4A3826" opacity="0.08"/>
+      <rect x="30" y="70" width="60" height="26" rx="4" fill="#E3A857"/>
+      <rect x="30" y="70" width="60" height="8" rx="4" fill="#D98B8B"/>
+      <rect x="36" y="58" width="48" height="14" rx="4" fill="#FFFDF8"/>
+      <rect x="56" y="34" width="8" height="26" fill="#7A6A56"/>
+      <g class="flame2" transform="translate(60,20)">
+        <path d="M0 0 C 6 6, 6 14, 0 18 C -6 14, -6 6, 0 0 Z" fill="#E3A857"/>
+        <path d="M0 4 C 3 8, 3 12, 0 15 C -3 12, -3 8, 0 4 Z" fill="#FFE29A"/>
+      </g>
+    </svg>
+  </div>
+  <p class="cake-note">กดที่เค้กเพื่อเป่าเทียน 🕯️</p>
+
+  <div class="wish-reveal" id="wishReveal">ขอให้ทุกความฝันของเธอเป็นจริง 💛</div>
+</section>
+
+<footer>
+  ทำด้วยความคิดถึง — แก้ไขข้อความ รูป และเพลงได้ในไฟล์นี้ทั้งหมด
+</footer>
+
+<script>
+/* ============================================================================
+   แก้ไขข้อมูลทั้งหมดของเว็บได้ตรงนี้ที่เดียว — ไม่ต้องแตะ HTML/CSS ด้านบนเลยก็ได้
+   ============================================================================ */
+const CONFIG = {
+  heroEyebrow: "สุขสันต์วันเกิด",
+  heroName: "ใส่ชื่อ",
+  heroSubtitle: "ก่อนจะเป่าเทียนวันนี้ ขอชวนย้อนกลับไปดูเรื่องราวที่เราผ่านมาด้วยกันอีกสักครั้ง",
+
+  // ใส่ path ไฟล์เพลงของคุณตรงนี้ เช่น "music/song.mp3"
+  musicSrc: "music.mp3",
+
+  closingTitle: "ขอให้ทุกวันของเธอมีความสุข",
+  closingText: "ไม่ว่าปีนี้จะพาอะไรเข้ามา ขอให้มีคนที่รักอยู่ข้างๆ เหมือนวันนี้เสมอ",
+  wishMessage: "ขอให้ทุกความฝันของเธอเป็นจริง 💛",
+
+  // ==========================================================
+  // ด่านคำถามกวนๆ ก่อนเข้าเว็บ (QUIZ GATE)
+  // ตั้งค่าและแก้ไขได้ทั้งหมดตรงนี้ ไม่ต้องแตะ HTML/CSS/JS ที่เหลือ
+  //
+  // วิธีทำงาน: เปิดลิงก์ -> เจอ "หน้าอำพราง" (ดูเหมือนแบบทดสอบทั่วไป
+  // ไม่รู้ว่าเกี่ยวกับวันเกิด) -> ตอบคำถามกวนๆ ไปเรื่อยๆ (กดข้อไหนก็ได้
+  // ไม่มีผิดถูก แค่โชว์มุกตอบกลับ) -> ถึงข้อสุดท้ายจะ "เฉลย" ว่าที่จริง
+  // นี่ไม่ใช่แบบทดสอบ -> ตามด้วยข้อความอบอุ่นลึกซึ้ง -> กดปุ่มสุดท้าย
+  // เพื่อเข้าสู่หน้าเว็บวันเกิดจริง (hero + ไทม์ไลน์ + เค้ก)
+  //
+  // เคล็ดลับแก้ไข:
+  // - ใช้ {{name}} ในข้อความไหนก็ได้ ระบบจะแทนที่ด้วยค่า heroName ด้านบนอัตโนมัติ
+  // - อยากปิดด่านนี้ไปเลยให้เข้าเว็บวันเกิดทันที ให้เปลี่ยน enabled เป็น false
+  // - เพิ่ม/ลบคำถามได้อิสระ แค่ทำตามรูปแบบ { question, options, reply } เดิม
+  //   options ใส่กี่ข้อก็ได้ (แนะนำ 2-4 ข้อ), reply คือมุกที่โชว์หลังกดตอบ
+  // ==========================================================
+  gate: {
+    enabled: true, // false = ข้ามด่านคำถาม เข้าหน้าวันเกิดทันที
+
+    // หน้าแรกสุด (อำพราง) — อย่าใส่คำว่า "วันเกิด" หรือใบ้ธีมเซอร์ไพรส์ตรงนี้
+    disguiseEyebrow: "แบบทดสอบเก็บสติประมวลผลความคิดเชิงลึก",
+    disguiseTitle: "พร้อมยังสมาชิก",
+    disguiseSubtitle: "ตอบคำถาม ไม่กี่ข้อ เพื่อประเมินไหวพริมการตอบคำถามเชิงลึก ใช้เวลาไม่ถึงนาที สัญญา",
+    startButtonText: "เริ่มเลย →",
+
+    // คำถามแต่ละข้อ (กดข้อไหนก็ได้ ไม่มีผิดถูกจริง แค่ให้ความรู้สึกกำลังเล่นเกม) — ตอนนี้มี 10 ข้อ
+    questions: [
+      {
+        question: "ถ้านักศึกษาคนหนึ่งอ่านหนังสือ 3 ชั่วโมง แต่จำอะไรไม่ได้เลย ข้อใดอธิบายปรากฏการณ์นี้ได้ดีที่สุด?",
+        options: ["สมองเข้าสู่ภาวะอนุรักษ์พลังงาน", "ข้อมูลถูกเก็บไว้ แต่ไม่ทราบว่าเก็บไว้ที่ไหน", "อ่านหนังสือด้วยความเร็วกว่าแสง", "ดื่มนำ้ไม่เพียงพอ"],
+        reply: "เอาดี"
+      },
+      {
+        question: "นักศึกษาวางแผนว่าจะนอนตอน 22:00 น. แต่สุดท้ายได้นอนตอน 03:00 น. หากให้ t เป็นเวลาที่เสียไป จงหาค่า t",
+        options: ["5 ชั่วโมง", "3 ชั่วโมง", "0 ชั่วโมง เพราะเวลานอนเป็นเรื่องสัมพัทธ์", "ขึ้นอยู่กับว่า “เดี๋ยวเดียว” ของนักศึกษาหมายถึงกี่ชั่วโมง"],
+        reply: "หืม...น่าสนใจ"
+      },
+      {
+        question: "ถ้า f(x) แทนจำนวนครั้งที่นักศึกษาบอกว่า “เดี๋ยวค่อยทำ” เมื่อ x คือจำนวนงานที่ยังไม่เสร็จ ข้อใดมีแนวโน้มถูกต้องที่สุด?",
+        options: ["f(x) ลดลงเมื่อ x เพิ่มขึ้น", " f(x) เป็นค่าคงที่", "f(x) มีค่าเป็นศูนย์ก่อนสอบ", "f(x) เพิ่มขึ้นแบบไม่มีที่สิ้นสุดเมื่อใกล้วันส่ง"],
+        reply: "แล้ววันนี้คุณส่งงานแล้วหรือยัง"
+      },
+      {
+        question: "วัตถุมวล 2 kg ถูกออกแรง 10 N ตามกฎข้อที่สองของนิวตัน วัตถุจะมีความเร่งเท่าใด?",
+        options: ["5", "20", "หาค่าไม่ได้"],
+        reply: "ยังไม่ได้บอกหน่วยเลย"
+      },
+      {
+        question: "นักศึกษาซื้อกาแฟเพื่อเพิ่มความสามารถในการอ่านหนังสือ แต่หลังจากดื่มแล้วกลับนั่งไถโทรศัพท์ 2 ชั่วโมง ข้อใดอธิบายได้ดีที่สุด?",
+        options: ["กาแฟไม่มีประสิทธิภาพ", "โทรศัพท์มีแรงดึงดูดสูง", "ระบบประสาทเลือกเป้าหมายใหม่", " พลังงานถูกเปลี่ยนจาก “อ่านหนังสือ” เป็น DOOMSCROLLING "],
+        reply: "พี่ชายกำลังจะถูกทำอาหาร"
+      },
+      {
+        question: "ถ้าคุณสามารถเลือกได้ว่าจะให้ใครกลับมาใน Doomsday 1 คน คุณเลือกใคร?",
+        options: ["Iron Man", "Black Widow", "Vision", "Willy Wonka(?)"],
+        reply: "I see"
+      },
+      {
+        question: "ถ้า Lancer เปิดร้านขายของ คุณคิดว่าสินค้าชิ้นไหนน่าจะไร้ประโยชน์ที่สุด?",
+        options: ["ดาบ", "คุกกี้", "ไพ่", " อะไรก็ได้ที่ Lancer บอกว่า “VERY GOOD” "],
+        reply: "เลือกได้ดี"
+      },
+      {
+        question: "ถ้า Yasuo พิมพ์ว่า “0/10 powerspike” หลังตายครบ 10 ครั้ง เพื่อนในทีมมีโอกาสตอบว่าอะไร?",
+        options: ["“bro is cooking”", "“uninstall bro”", "“what the dog doin”", "“just play safe”"],
+        reply: "เกมดีย์"
+      },
+      {
+        question: "ถ้าเพื่อนบอกว่า “ขอเล่นเกมสุดท้าย” คุณคิดว่าเกมนั้นจะจบกี่โมง?",
+        options: ["อีก 20 นาที", "เที่ยงคืน", "ตี 2", "ไม่บอก"],
+        reply: "เมื่อกี้แพ้ ไม่นับ"
+      },
+      {
+        question: "สุดท้ายนี้ มั่นใจแค่ไหนว่าแบบทดสอบนี้จะบอกอะไรได้จริงจัง",
+        options: ["มั่นใจมาก 100%", "ก็งั้นๆ ลองเล่นดู", "ไม่มั่นใจเลยสักนิด", "รู้สึกว่ามีอะไรแปลกๆ"],
+        reply: "...เอาล่ะ ได้เวลาดูผลกันแล้ว"
+      }
+    ],
+
+    // หน้า "ดูผลทำนาย" — ปุ่มจะหนีเวลากด (ไม่นับเป็นการกดจริง) สัก 3 ครั้ง
+    // ก่อนจะยอมให้กดโดน แล้วค่อยขึ้นข้อความล้อเลียนกวนๆ ก่อนตัดไปหน้ากำลังประมวลผล
+    evaluate: {
+      eyebrow: "ใกล้จะรู้ผลแล้ว...",
+      title: "กดปุ่มด้านล่างเพื่อดูผลทำนายของคุณ",
+      subtitle: "แค่กดปุ่มเดียวจบ ง่ายมาก",
+      buttonText: "ดูผลทำนาย →",
+      // ข้อความล้อเล่นที่โผล่มาทุกครั้งที่ปุ่มหนี (จะวนใช้ถ้าปุ่มหนีเกินจำนวนข้อความที่ใส่ไว้)
+      dodgeReplies: [
+        "ฮั่นแน่",
+        "ช้าไป",
+        "ผลทำนายบอกว่า กดไม่โดนอีกแล้ว"
+      ],
+      // ข้อความที่โผล่ตอนกดโดนปุ่มในที่สุด (มุกกวนๆ ปิดท้าย ก่อนเข้าสู่หน้าประมวลผล)
+      catchMessage: "จับได้แล้ว! ผลทำนายของคุณวันนี้คือ.................ไม่มีอ่ะ"
+    },
+
+    // หน้ากำลังประมวลผล (หลอกๆ) — ขึ้นสั้นๆ แล้วเลื่อนไปหน้าเฉลยเองอัตโนมัติ
+    processing: {
+      text: "loading...",
+      subtext: "Almost done please wait..."
+    },
+
+    // หน้าเฉลย — โผล่ทันทีหลังตอบคำถามครบ (ยังไม่ต้องอบอุ่นมาก แค่เริ่มเผย)
+    revealEyebrow: "เฉลย!",
+    revealTitle: "จริงๆ แบบทดสอบนี้ไม่มีอะไรเลย",
+    revealText: "เพราะทั้งหมดนี้คือ...",
+    revealButtonText: "คืออะไรน้า กดดูสิ",
+
+    // หน้าอบอุ่น — ใจความจริงของเว็บนี้ โผล่มาก่อนเข้าสู่หน้าวันเกิด
+    warmEyebrow: "และคำตอบคือ...",
+    warmTitle: "HAPPY BIRTHDAY TO MY BELOVED",
+    warmText: "เป็นเซอร์ไพรซ์(?)เล็กๆน้อยๆ เพราะจริงๆมีของจะให้แต่ยังไม่เสร็จเลยทำอันนี้ให้ก่อนTT คิดอยู่ว่าจะลงสตอรี่ hbd ไปเลยดีไหม แต่มันธรรมดาไปหน่อยไม่สมนามวิดวะคอม",
+    continueButtonText: "มีอะไรให้ดูแหละ ↓"
+  },
+
+  // เพิ่ม/ลบ/แก้ไขความทรงจำแต่ละจุดได้ตรงนี้
+  // media.type = "image" หรือ "video", media.src = พาธไฟล์ของคุณ (เว้นว่างไว้ได้ถ้ายังไม่มีไฟล์)
+  memories: [
+    
+    {
+      year: "Minecraft",
+      title: "เกมแรกที่เล่นด้วยกัน",
+      text: "จริงๆแล้วตอนนั้นเธอเป็นปัจจัยที่ทำให้รู้สึกอยากเล่นมายคราฟ เข้ามาเจอเธอแล้วแฮปปี้ ตอนเห็นชื่อ MiTT2z has joined the เกมแล้วใจเต้นทุกรอบ55665565",
+      media: { type: "image", src: "images/IMG_8104.jpg", alt: "แอบถ่าย:3" },
+      caption: "อยากเล่นด้วยกันอีกจุง"
+    },
+    {
+      year: "Just a Random day in June",
+      title: "First drink with YOU!",
+      text: "อยากบอกให้รู้ว่าที่เมาเพราะกินแก้เขิน",
+      media: { type: "image", src: "images/229B9366-DF0E-4CC1-8E40-75E2C8FAEEA5.jpg", alt: "รูปคู่(?) รูปแรก(???)" },
+      caption: "จุดเริ่มต้นของอะไรหลายๆอย่าง"
+    },
+    {
+      year: "PEAK",
+      title: "Peak Master",
+      text: "ขอบคุณที่รอจับมือกันนะที่รัก😘",
+      media: { type: "image", src: "images/Screenshot 2026-06-13 224008.png", alt: "ไม่ไหวแล้ว" },
+      caption: "ชุดคู่แบบใด"
+    },
+    {
+      year: "วันนี้",
+      title: "และแล้วก็มาถึงวันนี้",
+      text: "อีกหนึ่งปีที่เราได้เติบโตไปด้วยกัน ขอบคุณที่ยังอยู่ตรงนี้เสมอมา",
+      media: { type: "image", src: "", alt: "รูปปัจจุบัน" },
+      caption: "วันนี้"
+    }
+  ]
+};
+
+/* ============================================================================
+   ตั้งแต่ตรงนี้ลงไปเป็นโค้ดทำงาน ปกติไม่ต้องแก้ไข
+   ============================================================================ */
+document.getElementById('heroEyebrow').textContent = CONFIG.heroEyebrow;
+document.getElementById('heroName').textContent = CONFIG.heroName;
+document.getElementById('heroSubtitle').textContent = CONFIG.heroSubtitle;
+document.getElementById('closingTitle').textContent = CONFIG.closingTitle;
+document.getElementById('closingText').textContent = CONFIG.closingText;
+document.getElementById('wishReveal').textContent = CONFIG.wishMessage;
+document.querySelector('#bgm source').src = CONFIG.musicSrc;
+document.getElementById('bgm').load();
+
+const placeholderIcon = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 3l-1.6 2H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.4L15 3H9zm3 5a5 5 0 110 10 5 5 0 010-10z"/></svg>`;
+
+function buildMedia(m){
+  if(m.src){
+    if(m.type === 'video'){
+      return `<video src="${m.src}" controls playsinline></video>`;
+    }
+    return `<img src="${m.src}" alt="${m.alt || ''}" loading="lazy">`;
+  }
+  return `<div class="placeholder">${placeholderIcon}<span>ใส่${m.type === 'video' ? 'คลิป' : 'รูป'}ตรงนี้<br>(แก้ src ใน CONFIG)</span></div>`;
+}
+
+const list = document.getElementById('timelineList');
+CONFIG.memories.forEach((m, i) => {
+  const side = i % 2 === 0 ? 'left' : 'right';
+  const entry = document.createElement('div');
+  entry.className = `entry ${side}`;
+  entry.innerHTML = `
+    <div class="card">
+      <span class="tag">${m.year}</span>
+      <h3>${m.title}</h3>
+      <p class="story">${m.text}</p>
+      <div class="polaroid">
+        <div class="media">${buildMedia(m.media)}</div>
+        <span class="caption">${m.caption || ''}</span>
+      </div>
+    </div>
+    <div class="node"><div class="dot"></div></div>
+  `;
+  list.appendChild(entry);
+});
+
+/* เอฟเฟกต์ค่อยๆ ปรากฏเหมือนภาพถ่ายกำลังล้าง เมื่อเลื่อนมาถึง */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('in-view'); });
+}, { threshold: 0.25 });
+document.querySelectorAll('.entry').forEach(el => io.observe(el));
+
+/* ปุ่มเปิด/ปิดเพลง */
+const musicBtn = document.getElementById('musicBtn');
+const musicHint = document.getElementById('musicHint');
+const bgm = document.getElementById('bgm');
+let hintShown = false;
+setTimeout(() => { if(!hintShown){ musicHint.classList.add('show'); } }, 900);
+
+musicBtn.addEventListener('click', () => {
+  hintShown = true;
+  musicHint.classList.remove('show');
+  if(bgm.paused){
+    bgm.play().then(() => musicBtn.classList.add('playing'))
+      .catch(() => { alert('ยังไม่พบไฟล์เพลง — ใส่ path เพลงใน CONFIG.musicSrc ก่อนนะ'); });
+  } else {
+    bgm.pause();
+    musicBtn.classList.remove('playing');
+  }
+});
+
+/* กดเค้ก = เป่าเทียน + คอนเฟตติ */
+const cake = document.getElementById('cake');
+const wishReveal = document.getElementById('wishReveal');
+function blowCandle(){
+  if(cake.classList.contains('blown')) return;
+  cake.classList.add('blown');
+  wishReveal.classList.add('show');
+  launchConfetti();
+}
+cake.addEventListener('click', blowCandle);
+cake.addEventListener('keypress', (e) => { if(e.key === 'Enter' || e.key === ' ') blowCandle(); });
+
+function launchConfetti(){
+  const colors = ['#E3A857', '#7C9473', '#D98B8B', '#4A3826'];
+  for(let i = 0; i < 60; i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const size = 6 + Math.random() * 6;
+    piece.style.width = size + 'px';
+    piece.style.height = (size * 0.4) + 'px';
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4000);
+  }
+}
+
+/* ============================================================================
+   ด่านคำถามกวนๆ (QUIZ GATE) — ทำงานตาม CONFIG.gate ด้านบน ปกติไม่ต้องแก้ไขส่วนนี้
+   ลำดับสถานะ: -1 = หน้าอำพราง | 0..N-1 = คำถามแต่ละข้อ (N = จำนวนคำถามทั้งหมด)
+               N   = หน้า "ดูผลทำนาย" (ปุ่มหนีสัก 3 ครั้งก่อนกดโดน)
+               N+1 = หน้ากำลังประมวลผล (หลอกๆ เลื่อนต่อเองอัตโนมัติ)
+               N+2 = หน้าเฉลย | N+3 = หน้าอบอุ่น | หลังจากนั้น = ปิดด่าน เข้าเว็บจริง
+   ============================================================================ */
+const gateOverlay = document.getElementById('gateOverlay');
+const gateCard = document.getElementById('gateCard');
+let gateStep = -1;
+
+function gateText(str){
+  return (str || '').replace(/\{\{name\}\}/g, CONFIG.heroName);
+}
+
+function renderGateStep(){
+  const isFirstPaint = gateCard.innerHTML.trim() === '';
+  gateCard.classList.add('gate-fade');
+
+  setTimeout(() => {
+    const questions = CONFIG.gate.questions || [];
+
+    if(gateStep === -1){
+      gateCard.innerHTML = `
+        <p class="gate-eyebrow">${gateText(CONFIG.gate.disguiseEyebrow)}</p>
+        <h2>${gateText(CONFIG.gate.disguiseTitle)}</h2>
+        <p class="gate-body">${gateText(CONFIG.gate.disguiseSubtitle)}</p>
+        <button class="gate-btn" id="gateStartBtn">${gateText(CONFIG.gate.startButtonText)}</button>
+      `;
+      document.getElementById('gateStartBtn').addEventListener('click', () => {
+        gateStep = 0; renderGateStep();
+      });
+
+    } else if(gateStep < questions.length){
+      const q = questions[gateStep];
+      const dots = questions.map((_, i) => `<span class="${i === gateStep ? 'active' : ''}"></span>`).join('');
+      gateCard.innerHTML = `
+        <div class="gate-progress">${dots}</div>
+        <h2>${gateText(q.question)}</h2>
+        <div class="gate-options" id="gateOptions">
+          ${q.options.map((opt, i) => `<button class="gate-option" data-i="${i}">${gateText(opt)}</button>`).join('')}
+        </div>
+        <p class="gate-reply" id="gateReply">${gateText(q.reply || '')}</p>
+      `;
+      const replyEl = document.getElementById('gateReply');
+      gateCard.querySelectorAll('.gate-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if(gateCard.dataset.locked) return;
+          gateCard.dataset.locked = '1';
+          btn.classList.add('picked');
+          replyEl.classList.add('show');
+          setTimeout(() => { gateStep++; renderGateStep(); }, 1100);
+        });
+      });
+
+    } else if(gateStep === questions.length){
+      const ev = CONFIG.gate.evaluate;
+      gateCard.innerHTML = `
+        <p class="gate-eyebrow">${gateText(ev.eyebrow)}</p>
+        <h2>${gateText(ev.title)}</h2>
+        <p class="gate-body">${gateText(ev.subtitle)}</p>
+        <div class="gate-eval-stage" id="gateEvalStage">
+          <button class="gate-btn gate-eval-btn" id="gateEvalBtn" type="button">${gateText(ev.buttonText)}</button>
+        </div>
+        <p class="gate-eval-msg" id="gateEvalMsg"></p>
+      `;
+      initEvalDodgeButton();
+
+    } else if(gateStep === questions.length + 1){
+      gateCard.innerHTML = `
+        <div class="gate-spinner"></div>
+        <p class="gate-body">${gateText(CONFIG.gate.processing.text)}</p>
+        <p class="gate-processing-sub">${gateText(CONFIG.gate.processing.subtext)}</p>
+      `;
+      setTimeout(() => { gateStep++; renderGateStep(); }, 1900);
+
+    } else if(gateStep === questions.length + 2){
+      gateCard.innerHTML = `
+        <p class="gate-eyebrow">${gateText(CONFIG.gate.revealEyebrow)}</p>
+        <h2>${gateText(CONFIG.gate.revealTitle)}</h2>
+        <p class="gate-body">${gateText(CONFIG.gate.revealText)}</p>
+        <button class="gate-btn" id="gateRevealBtn">${gateText(CONFIG.gate.revealButtonText)}</button>
+      `;
+      document.getElementById('gateRevealBtn').addEventListener('click', () => {
+        gateStep++; renderGateStep();
+      });
+
+    } else if(gateStep === questions.length + 3){
+      gateCard.innerHTML = `
+        <p class="gate-eyebrow">${gateText(CONFIG.gate.warmEyebrow)}</p>
+        <h2>${gateText(CONFIG.gate.warmTitle)}</h2>
+        <p class="gate-body">${gateText(CONFIG.gate.warmText)}</p>
+        <button class="gate-btn" id="gateContinueBtn">${gateText(CONFIG.gate.continueButtonText)}</button>
+      `;
+      document.getElementById('gateContinueBtn').addEventListener('click', closeGate);
+    }
+
+    delete gateCard.dataset.locked;
+    gateCard.classList.remove('gate-fade');
+  }, isFirstPaint ? 0 : 220);
+}
+
+/* ปุ่ม "ดูผลทำนาย" ที่หนีเวลากด สัก 3 ครั้ง ก่อนจะยอมให้กดโดน */
+function initEvalDodgeButton(){
+  const stage = document.getElementById('gateEvalStage');
+  const btn = document.getElementById('gateEvalBtn');
+  const msg = document.getElementById('gateEvalMsg');
+  const ev = CONFIG.gate.evaluate;
+  const maxDodge = 3;
+  let dodgeCount = 0;
+  let caught = false;
+
+  function placeButtonRandomly(){
+    const stageW = stage.clientWidth;
+    const stageH = stage.clientHeight;
+    const pad = 36;
+    const x = pad + Math.random() * Math.max(1, stageW - pad * 2);
+    const y = pad + Math.random() * Math.max(1, stageH - pad * 2);
+    btn.style.left = x + 'px';
+    btn.style.top = y + 'px';
+  }
+
+  btn.addEventListener('click', () => {
+    if(caught) return;
+
+    if(dodgeCount < maxDodge){
+      dodgeCount++;
+      placeButtonRandomly();
+      const lines = ev.dodgeReplies || [];
+      const line = lines[dodgeCount - 1] || lines[lines.length - 1] || '';
+      msg.textContent = gateText(line);
+      msg.classList.remove('catch');
+      msg.classList.add('show');
+      btn.classList.remove('shake');
+      void btn.offsetWidth; /* รีสตาร์ทแอนิเมชันชייค */
+      btn.classList.add('shake');
+      return;
+    }
+
+    caught = true;
+    btn.disabled = true;
+    btn.style.opacity = '0.85';
+    msg.textContent = gateText(ev.catchMessage);
+    msg.classList.add('show', 'catch');
+    setTimeout(() => { gateStep++; renderGateStep(); }, 2000);
+  });
+
+  /* บนเดสก์ท็อป ให้ปุ่มหนีตอนเมาส์เข้าใกล้ด้วย เพิ่มความกวน */
+  btn.addEventListener('mouseenter', () => {
+    if(caught || dodgeCount >= maxDodge) return;
+    dodgeCount++;
+    placeButtonRandomly();
+    const lines = ev.dodgeReplies || [];
+    const line = lines[dodgeCount - 1] || lines[lines.length - 1] || '';
+    msg.textContent = gateText(line);
+    msg.classList.remove('catch');
+    msg.classList.add('show');
+  });
+}
+
+function closeGate(){
+  gateOverlay.classList.add('gate-hidden');
+  document.body.style.overflow = '';
+  setTimeout(() => { gateOverlay.remove(); }, 650);
+}
+
+if(CONFIG.gate && CONFIG.gate.enabled && gateOverlay){
+  document.body.style.overflow = 'hidden';
+  renderGateStep();
+} else if(gateOverlay){
+  gateOverlay.remove();
+}
+</script>
+</body>
+</html>
